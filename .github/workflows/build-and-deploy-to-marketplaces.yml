@@ -1,0 +1,211 @@
+name: Build and Deploy to Steam
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Release]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+            steam_os: windows
+            steam_arch: 64
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+            steam_os: linux
+            steam_arch: 64
+          - os: macos-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            steam_os: macos
+            steam_arch: 64
+        exclude:
+          - os: ubuntu-latest
+            c_compiler: cl
+          - os: windows-latest
+            c_compiler: gcc
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # -------------------------------------------------------------------------
+    # macOS: Sign and notarize
+    # Requires secrets:
+    #   MACOS_CERTIFICATE        - base64-encoded .p12 Developer ID certificate
+    #   MACOS_CERTIFICATE_PWD    - password for the .p12
+    #   MACOS_KEYCHAIN_PWD       - a temporary keychain password (any random string)
+    #   MACOS_NOTARIZATION_APPLE_ID   - your Apple ID email
+    #   MACOS_NOTARIZATION_TEAM_ID    - your Apple Developer Team ID
+    #   MACOS_NOTARIZATION_PWD        - an app-specific password for notarytool
+    # -------------------------------------------------------------------------
+    - name: "[macOS] Import signing certificate"
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Decode the certificate from secrets and import into a temporary keychain
+        echo "${{ secrets.MACOS_CERTIFICATE }}" | base64 --decode > certificate.p12
+        security create-keychain -p "${{ secrets.MACOS_KEYCHAIN_PWD }}" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "${{ secrets.MACOS_KEYCHAIN_PWD }}" build.keychain
+        security import certificate.p12 \
+          -k build.keychain \
+          -P "${{ secrets.MACOS_CERTIFICATE_PWD }}" \
+          -T /usr/bin/codesign
+        security set-key-partition-list \
+          -S apple-tool:,apple: \
+          -s -k "${{ secrets.MACOS_KEYCHAIN_PWD }}" build.keychain
+        rm certificate.p12
+
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "install-dir=${{ github.workspace }}/dist" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+        -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ctest --build-config ${{ matrix.build_type }}
+
+    - name: Install to staging directory
+      run: cmake --install ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    # -------------------------------------------------------------------------
+    # Windows: Sign the executable with signtool
+    # Requires secrets:
+    #   WINDOWS_CERTIFICATE      - base64-encoded .pfx certificate
+    #   WINDOWS_CERTIFICATE_PWD  - password for the .pfx
+    # -------------------------------------------------------------------------
+    - name: "[Windows] Sign executable"
+      if: matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
+      shell: pwsh
+      run: |
+        # Decode and import certificate
+        $certBytes = [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE }}")
+        $certPath = "$env:TEMP\certificate.pfx"
+        [IO.File]::WriteAllBytes($certPath, $certBytes)
+
+        # Sign all .exe files in the install directory
+        # Adjust the glob if your install layout differs
+        Get-ChildItem -Path "${{ steps.strings.outputs.install-dir }}" -Filter "*.exe" -Recurse | ForEach-Object {
+          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign `
+            /fd SHA256 `
+            /f $certPath `
+            /p "${{ secrets.WINDOWS_CERTIFICATE_PWD }}" `
+            /tr http://timestamp.digicert.com `
+            /td SHA256 `
+            $_.FullName
+        }
+        Remove-Item $certPath
+
+    # -------------------------------------------------------------------------
+    # macOS: Sign and notarize the app bundle
+    # Your CMake install should produce a .app bundle under dist/
+    # Adjust the bundle path below to match your actual output
+    # -------------------------------------------------------------------------
+    - name: "[macOS] Sign app bundle"
+      if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Replace YourApp.app with your actual bundle name
+        codesign --deep --force --verify --verbose \
+          --sign "Developer ID Application: Your Name (${{ secrets.MACOS_NOTARIZATION_TEAM_ID }})" \
+          --options runtime \
+          "${{ steps.strings.outputs.install-dir }}/YourApp.app"
+
+    - name: "[macOS] Notarize app bundle"
+      if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Zip the bundle for submission — notarytool requires a zip, dmg, or pkg
+        ditto -c -k --keepParent \
+          "${{ steps.strings.outputs.install-dir }}/YourApp.app" \
+          "${{ steps.strings.outputs.install-dir }}/YourApp.zip"
+
+        xcrun notarytool submit \
+          "${{ steps.strings.outputs.install-dir }}/YourApp.zip" \
+          --apple-id "${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}" \
+          --team-id "${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}" \
+          --password "${{ secrets.MACOS_NOTARIZATION_PWD }}" \
+          --wait  # blocks until Apple responds; can take a few minutes
+
+        # Staple the notarization ticket to the bundle so it works offline
+        xcrun stapler staple "${{ steps.strings.outputs.install-dir }}/YourApp.app"
+
+    # -------------------------------------------------------------------------
+    # Upload build artifacts — available on every push, not just tags
+    # Useful for inspecting builds from PRs or main before cutting a release
+    # -------------------------------------------------------------------------
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.os }}-${{ matrix.build_type }}
+        path: ${{ steps.strings.outputs.install-dir }}
+        retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Steam deploy — only runs on version tags, after all build jobs succeed
+  # Requires secrets:
+  #   STEAM_USERNAME   - your Steamworks build account username
+  #   STEAM_PASSWORD   - its password
+  #                      (consider a dedicated build account, not your personal one)
+  #
+  # You'll need one .vdf file per depot in your repo, e.g.:
+  #   steam/app_build.vdf       - top-level app build config
+  #   steam/depot_windows.vdf   - Windows depot
+  #   steam/depot_linux.vdf     - Linux depot
+  #   steam/depot_macos.vdf     - macOS depot
+  # See: https://partner.steamgames.com/doc/sdk/uploading
+  # ---------------------------------------------------------------------------
+  deploy-steam:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts  # each platform lands in artifacts/<os>-Release/
+
+    - name: Deploy to Steam
+      uses: game-ci/steam-deploy@v3
+      with:
+        username: ${{ secrets.STEAM_USERNAME }}
+        configVdf: ${{ secrets.STEAM_CONFIG_VDF }}
+        # Your Steam App ID from the Steamworks dashboard
+        appId: YOUR_APP_ID_HERE
+        # Path to your top-level app build VDF
+        # The VDF depots should reference paths under artifacts/
+        buildDescription: ${{ github.ref_name }}
+        rootPath: artifacts
+        depot1Path: windows-Release
+        depot2Path: ubuntu-latest-Release
+        depot3Path: macos-latest-Release
+        releaseBranch: beta  # push to beta branch; promote to default manually
