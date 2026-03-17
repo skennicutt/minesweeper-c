@@ -1,0 +1,59 @@
+{
+  "product": {
+    "id": "YOUR_GOG_GAME_ID",
+    "base_product_id": "YOUR_GOG_GAME_ID",
+    "os": "windows,osx,linux",
+    "external_libs": []
+  },
+  "repositories": [
+    {
+      "id":      "windows",
+      "os":      "windows",
+      "arch":    "x64",
+      "path":    "../artifacts/windows",
+      "language": "en-US"
+    },
+    {
+      "id":      "linux",
+      "os":      "linux",
+      "arch":    "x64",
+      "path":    "../artifacts/linux",
+      "language": "en-US"
+    },
+    {
+      "id":      "macos",
+      "os":      "osx",
+      "arch":    "x64",
+      "path":    "../artifacts/macos",
+      "language": "en-US"
+    }
+  ],
+  "depots": [
+    {
+      "id":      "windows_depot",
+      "name":    "Windows Depot",
+      "os":      "windows",
+      "manifest": { "repository": "windows" }
+    },
+    {
+      "id":      "linux_depot",
+      "name":    "Linux Depot",
+      "os":      "linux",
+      "manifest": { "repository": "linux" }
+    },
+    {
+      "id":      "macos_depot",
+      "name":    "macOS Depot",
+      "os":      "osx",
+      "manifest": { "repository": "macos" }
+    }
+  ],
+  "products": [
+    {
+      "id":            "YOUR_GOG_GAME_ID",
+      "name":          "minesweeper-c",
+      "operating_systems": ["windows", "osx", "linux"],
+      "depots":        ["windows_depot", "linux_depot", "macos_depot"]
+    }
+  ]
+}

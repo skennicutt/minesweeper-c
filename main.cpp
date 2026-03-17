@@ -58,8 +58,8 @@ void handle_user_input(game_state *state) {
 
 // Render Loop
 SDL_Window *initialize_window() {
-  SDL_Window *window = SDL_CreateWindow("Snake", WINDOW_WIDTH, WINDOW_HEIGHT,
-                                        SDL_WINDOW_BORDERLESS);
+  SDL_Window *window = SDL_CreateWindow("Minesweeper", WINDOW_WIDTH,
+                                        WINDOW_HEIGHT, SDL_WINDOW_BORDERLESS);
 
   if (!window) {
     fprintf(stderr, "ERROR: SDL_CreateWindow");

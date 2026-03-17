@@ -1,0 +1,13 @@
+"AppBuild"
+{
+    "AppID"          "YOUR_APP_ID"    // Steamworks App ID
+    "Desc"           "CI Build"       // Replaced at runtime by buildDescription
+    "BuildOutput"    "../build_output/"
+
+    "Depots"
+    {
+        "YOUR_WINDOWS_DEPOT_ID"  { "FileMapping" { "LocalPath" "../artifacts/windows/*"  "DepotPath" "."  "recursive" "1" } }
+        "YOUR_LINUX_DEPOT_ID"    { "FileMapping" { "LocalPath" "../artifacts/linux/*"    "DepotPath" "."  "recursive" "1" } }
+        "YOUR_MACOS_DEPOT_ID"    { "FileMapping" { "LocalPath" "../artifacts/macos/*"    "DepotPath" "."  "recursive" "1" } }
+    }
+}
