@@ -110,7 +110,7 @@ void execute_main_gameplay_loop(SDL_Renderer *renderer, game_state &state) {
                   // handling and causes delays
 }
 
-int main(int argc, char *argv[]) {
+int main(int, char *[]) {
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     fprintf(stderr, "ERROR: Could not initialize SDL: %s\n", SDL_GetError());
   }
