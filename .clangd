@@ -1,3 +1,4 @@
 CompileFlags:
   Add:
     - -I./vendored/SDL/include
+    - -I./vendored/SDL_image/include

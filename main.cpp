@@ -1,10 +1,15 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h>
 #include <cassert>
+#include <cstdio>
 #include <iostream>
 
 #include "SDL3/SDL_events.h"
+#include "SDL3/SDL_surface.h"
 #include "utils.h"
+#include "vendored/SDL/include/SDL3/SDL_render.h"
+#include "vendored/SDL/include/SDL3/SDL_video.h"
 
 #define WINDOW_X 0
 #define WINDOW_Y 0
@@ -44,7 +49,7 @@ void handle_user_key_input(game_state *state, SDL_Event e) {
   case SDL_EVENT_KEY_UP:
     break;
   case SDL_EVENT_KEY_DOWN:
-    // handle_user_key_down(state, e);
+    handle_user_key_down(state, e);
     break;
   default:
     break;
@@ -62,8 +67,8 @@ void handle_user_input(game_state *state) {
 
 // Render Loop
 SDL_Window *initialize_window() {
-  SDL_Window *window = SDL_CreateWindow("Minesweeper", WINDOW_WIDTH,
-                                        WINDOW_HEIGHT, SDL_WINDOW_BORDERLESS);
+  SDL_Window *window =
+      SDL_CreateWindow("Minesweeper", WINDOW_WIDTH, WINDOW_HEIGHT, 0);
 
   if (!window) {
     fprintf(stderr, "ERROR: SDL_CreateWindow");
@@ -123,9 +128,19 @@ int main(int, char *[]) {
   SDL_Window *window = initialize_window();
   SDL_Renderer *renderer = initialize_renderer(window);
 
+  SDL_Surface *window_icon = IMG_Load("images/icon.png");
+
+  if (!window_icon) {
+    fprintf(stderr, "ERROR: Could not load window icon: %s\n", SDL_GetError());
+  }
+
+  if (!SDL_SetWindowIcon(window, window_icon)) {
+    fprintf(stderr, "ERROR: Could not set window icon: %s\n", SDL_GetError());
+  }
+
   // SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
   SDL_SetRenderLogicalPresentation(renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT,
-                                   SDL_LOGICAL_PRESENTATION_LETTERBOX);
+                                   SDL_LOGICAL_PRESENTATION_DISABLED);
 
   // SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Hello World", "This
   // is a test of the message box", window);
