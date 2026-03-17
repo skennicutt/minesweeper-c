@@ -3,10 +3,12 @@
 #include <cassert>
 #include <iostream>
 
+#include "utils.h"
+
 #define WINDOW_X 0
 #define WINDOW_Y 0
-#define LOGICAL_HEIGHT 380
-#define LOGICAL_WIDTH 640
+#define LOGICAL_HEIGHT 600
+#define LOGICAL_WIDTH 800
 #define WINDOW_WIDTH 1920
 #define WINDOW_HEIGHT 1080
 
@@ -15,16 +17,6 @@
 
 #define GRID_START_X ((LOGICAL_WIDTH / 2) - (GRID_DIM / 2))
 #define GRID_START_Y ((LOGICAL_HEIGHT / 2) - (GRID_DIM / 2))
-
-int uniform_random(int lower, int upper) {
-  int range = upper - lower + 1;
-  int limit = RAND_MAX - (RAND_MAX % range);
-  int r;
-  do {
-    r = rand();
-  } while (r >= limit);
-  return (r % range) + lower;
-}
 
 // Core structures
 typedef struct game_state {
