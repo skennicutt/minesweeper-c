@@ -82,14 +82,19 @@ jobs:
             platform: windows
             c_compiler: cl
             cpp_compiler: cl
+            # /GL (whole-program optimisation) produces non-standard object files
+            # that sccache cannot cache, causing full recompilation every run.
+            extra_cmake_flags: -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF
           - os: ubuntu-latest
             platform: linux
             c_compiler: gcc
             cpp_compiler: g++
+            extra_cmake_flags: ''
           - os: macos-latest
             platform: macos
             c_compiler: clang
             cpp_compiler: clang++
+            extra_cmake_flags: ''
 
     steps:
       - name: Checkout
@@ -124,6 +129,7 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=dist
           -DCMAKE_C_COMPILER_LAUNCHER=sccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          ${{ matrix.extra_cmake_flags }}
           -S .
 
       - name: Build
