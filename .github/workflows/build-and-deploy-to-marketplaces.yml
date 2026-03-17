@@ -3,7 +3,8 @@
 #
 # Stages
 #   1. build      – CMake build + test on Windows, Linux, macOS  (always)
-#   2. sign       – Code-sign Windows (.pfx) and macOS (.app)    (tags only)
+#   2. sign       – Code-sign Windows (.pfx), macOS (.app), and Linux (GPG)
+#                   (tags only)
 #   3. deploy     – Push to Steam, GOG, and itch.io              (tags only)
 #
 # Trigger
@@ -32,6 +33,11 @@
 #     GOG_CLIENT_ID         GOG Galaxy pipeline client ID
 #     GOG_CLIENT_SECRET     GOG Galaxy pipeline client secret
 #
+#   Linux signing:
+#     LINUX_GPG_PRIVATE_KEY      base64-encoded armored GPG private key
+#                                  export: gpg --export-secret-keys -a KEY_ID | base64
+#     LINUX_GPG_KEY_ID           key ID or email used to sign (e.g. releases@yourgame.com)
+#
 #   itch.io:
 #     BUTLER_CREDENTIALS    butler API key  (https://itch.io/user/settings/api-keys)
 #
@@ -54,6 +60,7 @@ on:
 env:
   GAME_NAME: minesweeper-c
   BUILD_TYPE: Release
+  RUN_TS: ${{ github.run_id }}-${{ github.run_attempt }}
 
 # Cancel in-progress runs for the same ref so PRs don't queue up
 concurrency:
@@ -123,7 +130,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ env.GAME_NAME }}-${{ matrix.platform }}-unsigned
+          name: ${{ env.GAME_NAME }}-${{ matrix.platform }}-unsigned-${{ env.RUN_TS }}
           path: dist/
           retention-days: 7
 
@@ -140,7 +147,7 @@ jobs:
       - name: Download unsigned Windows artifact
         uses: actions/download-artifact@v5
         with:
-          name: ${{ env.GAME_NAME }}-windows-unsigned
+          name: ${{ env.GAME_NAME }}-windows-unsigned-${{ env.RUN_TS }}
           path: dist/
 
       # signtool.exe ships with the Windows SDK; find the latest installed copy
@@ -187,7 +194,7 @@ jobs:
       - name: Download unsigned macOS artifact
         uses: actions/download-artifact@v5
         with:
-          name: ${{ env.GAME_NAME }}-macos-unsigned
+          name: ${{ env.GAME_NAME }}-macos-unsigned-${{ env.RUN_TS }}
           path: dist/
 
       # Import the Developer ID certificate into a temporary keychain so
@@ -249,6 +256,49 @@ jobs:
           retention-days: 7
 
 # ═════════════════════════════════════════════════════════════════════════════
+# STAGE 2c – Sign (Linux)
+# ═════════════════════════════════════════════════════════════════════════════
+  sign-linux:
+    name: Sign / Linux
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download unsigned Linux artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ env.GAME_NAME }}-linux-unsigned-${{ env.RUN_TS }}
+          path: dist/
+
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.LINUX_GPG_PRIVATE_KEY }}" | base64 --decode \
+            | gpg --batch --import
+          # Mark the imported key as ultimately trusted
+          KEY_FP=$(gpg --list-secret-keys --with-colons \
+            | awk -F: '/^fpr/{print $10; exit}')
+          echo "${KEY_FP}:6:" | gpg --import-ownertrust
+
+      # Creates a detached ASCII-armored .asc signature alongside each binary.
+      # Recipients can verify with: gpg --verify <binary>.asc <binary>
+      - name: Sign executables
+        run: |
+          find dist/ -type f -executable ! -name "*.so*" | while read binary; do
+            gpg --batch --yes \
+              --local-user "${{ secrets.LINUX_GPG_KEY_ID }}" \
+              --detach-sign --armor \
+              "$binary"
+          done
+
+      - name: Upload signed Linux artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ env.GAME_NAME }}-linux
+          path: dist/
+          retention-days: 7
+
+# ═════════════════════════════════════════════════════════════════════════════
 # STAGE 3 – Deploy (all three stores run in parallel after signing)
 #
 # sign-windows and sign-macos both depend on `build`, so by the time either
@@ -266,7 +316,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   deploy-steam:
     name: Deploy / Steam
-    needs: [sign-windows, sign-macos]
+    needs: [sign-windows, sign-macos, sign-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     environment: steam-release   # optional: require manual approval in GitHub
@@ -284,7 +334,7 @@ jobs:
       - name: Download Linux artifact
         uses: actions/download-artifact@v5
         with:
-          name: ${{ env.GAME_NAME }}-linux-unsigned
+          name: ${{ env.GAME_NAME }}-linux
           path: artifacts/linux/
 
       - name: Download macOS artifact (signed)
@@ -313,7 +363,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   deploy-gog:
     name: Deploy / GOG
-    needs: [sign-windows, sign-macos]
+    needs: [sign-windows, sign-macos, sign-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     environment: gog-release
@@ -331,7 +381,7 @@ jobs:
       - name: Download Linux artifact
         uses: actions/download-artifact@v5
         with:
-          name: ${{ env.GAME_NAME }}-linux-unsigned
+          name: ${{ env.GAME_NAME }}-linux
           path: artifacts/linux/
 
       - name: Download macOS artifact (signed)
@@ -370,7 +420,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   deploy-itch:
     name: Deploy / itch.io
-    needs: [sign-windows, sign-macos]
+    needs: [sign-windows, sign-macos, sign-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     environment: itch-release
@@ -385,7 +435,7 @@ jobs:
       - name: Download Linux artifact
         uses: actions/download-artifact@v5
         with:
-          name: ${{ env.GAME_NAME }}-linux-unsigned
+          name: ${{ env.GAME_NAME }}-linux
           path: artifacts/linux/
 
       - name: Download macOS artifact (signed)
