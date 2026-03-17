@@ -110,11 +110,11 @@ void execute_main_gameplay_loop(SDL_Renderer *renderer, game_state &state) {
 }
 
 int main() {
-  if (SDL_INIT_VIDEO < 0) {
-    fprintf(stderr, "ERROR: SDL_INIT_VIDEO");
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    fprintf(stderr, "ERROR: Could not initialize SDL: %s\n", SDL_GetError());
   }
 
-  srand(time(NULL));
+  srand((unsigned int)time(NULL));
 
   SDL_Window *window = initialize_window();
   SDL_Renderer *renderer = initialize_renderer(window);
