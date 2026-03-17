@@ -21,13 +21,13 @@ target_compile_options(${PROJECT_NAME} PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 )
 
-# Install the game executable
-install(TARGETS minesweeper-c
-        RUNTIME DESTINATION .
+# Set RPATH so the executable finds SDL3 in the same directory at runtime
+set_target_properties(minesweeper-c PROPERTIES
+        INSTALL_RPATH "$<IF:$<PLATFORM_ID:Darwin>,@executable_path,\$ORIGIN>"
 )
 
-# Install SDL3 runtime DLLs alongside the executable (Windows only)
-install(FILES $<TARGET_RUNTIME_DLLS:minesweeper-c>
-        DESTINATION .
-        CONFIGURATIONS Release
+# Install the game executable and SDL3 shared library
+install(TARGETS minesweeper-c SDL3-shared
+        RUNTIME DESTINATION .
+        LIBRARY DESTINATION .
 )
