@@ -36,3 +36,6 @@ install(TARGETS minesweeper-c SDL3-shared SDL3_image-shared
         RUNTIME DESTINATION .
         LIBRARY DESTINATION .
 )
+
+# Install game assets
+install(DIRECTORY images/ DESTINATION images)
