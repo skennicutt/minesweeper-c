@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -121,7 +121,7 @@ jobs:
 
       # Unsigned artifacts – consumed by the sign jobs (or directly by deploy for Linux)
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-${{ matrix.platform }}-unsigned
           path: dist/
@@ -138,7 +138,7 @@ jobs:
 
     steps:
       - name: Download unsigned Windows artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-windows-unsigned
           path: dist/
@@ -168,7 +168,7 @@ jobs:
           Remove-Item $certPath
 
       - name: Upload signed Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-windows
           path: dist/
@@ -185,7 +185,7 @@ jobs:
 
     steps:
       - name: Download unsigned macOS artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-macos-unsigned
           path: dist/
@@ -242,7 +242,7 @@ jobs:
             "dist/${{ env.GAME_NAME }}.dmg"
 
       - name: Upload signed macOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-macos
           path: dist/
@@ -273,22 +273,22 @@ jobs:
 
     steps:
       - name: Checkout (for VDF configs)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Windows artifact (signed)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-windows
           path: artifacts/windows/
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-linux-unsigned
           path: artifacts/linux/
 
       - name: Download macOS artifact (signed)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-macos
           path: artifacts/macos/
@@ -320,22 +320,22 @@ jobs:
 
     steps:
       - name: Checkout (for GOG pipeline config)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Windows artifact (signed)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-windows
           path: artifacts/windows/
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-linux-unsigned
           path: artifacts/linux/
 
       - name: Download macOS artifact (signed)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-macos
           path: artifacts/macos/
@@ -377,19 +377,19 @@ jobs:
 
     steps:
       - name: Download Windows artifact (signed)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-windows
           path: artifacts/windows/
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-linux-unsigned
           path: artifacts/linux/
 
       - name: Download macOS artifact (signed)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.GAME_NAME }}-macos
           path: artifacts/macos/
