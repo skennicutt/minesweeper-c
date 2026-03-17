@@ -145,6 +145,10 @@ int main(int, char *[]) {
   // SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Hello World", "This
   // is a test of the message box", window);
 
+  // Clean up the window icon, once we draw it we don't need to reference again.
+  SDL_DestroySurface(window_icon);
+  window_icon = NULL;
+
   game_state state = initialize_game_state();
 
   while (state.quit != true) {

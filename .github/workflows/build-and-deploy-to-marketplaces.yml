@@ -107,6 +107,13 @@ jobs:
             libdrm-dev libgbm-dev libegl-dev libgles2-mesa-dev \
             libasound2-dev libpulse-dev libpipewire-0.3-dev
 
+      # sccache wraps the compiler and caches object files in GitHub's cache.
+      # On subsequent runs, SDL3/SDL_image (the bulk of compile time) are served
+      # from cache instead of rebuilt, which is especially impactful on Windows
+      # where MSVC is slower than GCC/Clang.
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Configure CMake
         run: >
           cmake -B build
@@ -115,6 +122,8 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
           -DCMAKE_INSTALL_PREFIX=dist
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -S .
 
       - name: Build
