@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 project(minesweeper-c)
 
 # set the output directory for built objects.
@@ -19,4 +19,15 @@ target_link_libraries(minesweeper-c PRIVATE SDL3::SDL3)
 target_compile_options(${PROJECT_NAME} PRIVATE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-Wall -Wextra -Wpedantic -Werror>
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+)
+
+# Install the game executable
+install(TARGETS minesweeper-c
+        RUNTIME DESTINATION .
+)
+
+# Install SDL3 runtime DLLs alongside the executable (Windows only)
+install(FILES $<TARGET_RUNTIME_DLLS:minesweeper-c>
+        DESTINATION .
+        CONFIGURATIONS Release
 )
