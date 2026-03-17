@@ -3,11 +3,12 @@
 #include <cassert>
 #include <iostream>
 
+#include "SDL3/SDL_events.h"
 #include "utils.h"
 
 #define WINDOW_X 0
 #define WINDOW_Y 0
-#define LOGICAL_HEIGHT 600
+#define LOGICAL_HEIGHT 640
 #define LOGICAL_WIDTH 800
 #define WINDOW_WIDTH 1920
 #define WINDOW_HEIGHT 1080
@@ -24,6 +25,16 @@ typedef struct game_state {
   bool reset;
   bool game_over;
 } GameState;
+
+void handle_user_key_down(game_state *state, SDL_Event e) {
+  switch (e.key.key) {
+  case SDLK_ESCAPE:
+    state->quit = true;
+    break;
+  default:
+    break;
+  }
+}
 
 void handle_user_key_input(game_state *state, SDL_Event e) {
   switch (e.type) {
