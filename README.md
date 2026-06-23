@@ -19,6 +19,13 @@ git clone --recurse-submodules <repo-url>
 cd minesweeper-c
 ```
 
+Or clone the repo first and initialize the submodules after.
+```
+git submodule update --init --recursive
+```
+```
+```
+
 Then build:
 
 ```bash
