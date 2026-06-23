@@ -1,6 +1,6 @@
 # minesweeper-c
 
-A Minesweeper clone written in C++ using SDL3.
+A Tetris clone written in C++ using SDL3.
 
 ## Requirements
 
